@@ -14,6 +14,7 @@ import Layout from './components/layout/Layout';
 
 // AI Tool Pages
 import Dashboard from './pages/Dashboard';
+import FeatureHistory from './pages/FeatureHistory';
 import WriteArticle from './pages/WriteArticle';
 import BlogTitles from './pages/BlogTitles';
 import Generateimages from './pages/Generateimages';
@@ -54,6 +55,7 @@ const App = () => {
         <Route path="/ai" element={<Layout />}>
           {/* Default view when navigating to /ai */}
           <Route index element={<Dashboard />} />
+          <Route path="history/:category" element={<FeatureHistory />} />
           
           {/* AI Tools */}
           <Route path="study-sessions" element={<StudySessions />} />

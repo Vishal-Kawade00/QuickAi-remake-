@@ -1,137 +1,225 @@
 import React, { useState } from 'react';
-import MarkDown from 'react-markdown';
-import { Image as ImageIcon, FileText, AlignLeft, PlaySquare, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronUp, Copy, Check, Download, FileText, Image as ImageIcon, Youtube, FileDown, AlignLeft, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import html2pdf from 'html2pdf.js';
+import MarkdownViewer from './renderers/MarkdownViewer';
 
 const CreationItems = ({ item }) => {
-    const [expanded, setExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [isCopied, setIsCopied] = useState(false);
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
-    // Dynamic icon selection based on the creation type
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    };
+
     const getIcon = () => {
-        switch (item.displayType) {
-            case 'Image Tool': return <ImageIcon className="w-5 h-5 text-green-500" />;
-            case 'Document Tool': return <FileText className="w-5 h-5 text-teal-500" />;
-            case 'Study Session': return <PlaySquare className="w-5 h-5 text-red-500" />;
-            default: return <AlignLeft className="w-5 h-5 text-blue-500" />; // Articles & Titles
+        switch (item.mappedType) {
+            case 'text': return <AlignLeft className="w-5 h-5 text-blue-500" />;
+            case 'image': return <ImageIcon className="w-5 h-5 text-green-500" />;
+            case 'document': return <FileText className="w-5 h-5 text-teal-500" />;
+            case 'youtube': return <Youtube className="w-5 h-5 text-red-500" />;
+            default: return <FileText className="w-5 h-5 text-gray-500" />;
         }
     };
 
-    // Dynamic badge styling
-    const getBadgeStyle = () => {
-        switch (item.displayType) {
-            case 'Image Tool': return "bg-green-50 text-green-700 border-green-200";
-            case 'Document Tool': return "bg-teal-50 text-teal-700 border-teal-200";
-            case 'Study Session': return "bg-red-50 text-red-700 border-red-200";
-            default: return "bg-blue-50 text-blue-700 border-blue-200";
+    const getPromptPreview = () => {
+        if (item.mappedType === 'youtube') return item.title || item.videoUrl;
+        if (item.mappedType === 'document') return `Analyzed Resume: ${item.fileName || 'Document'}`;
+        if (item.mappedType === 'image' && !item.prompt) return `Image Edit: ${item.taskType.replace('_', ' ')}`;
+        return item.prompt || 'No prompt provided';
+    };
+
+    const handleCopy = () => {
+        const contentToCopy = item.content || item.aiFeedback || item.notes || item.summary || item.prompt;
+        navigator.clipboard.writeText(contentToCopy);
+        setIsCopied(true);
+        toast.success("Copied to clipboard!");
+        setTimeout(() => setIsCopied(false), 2000);
+    };
+
+    const handleDownloadImage = async () => {
+        const toastId = toast.loading("Downloading image...");
+        try {
+            const response = await fetch(item.processedImageUrl, { mode: 'cors' });
+            if (!response.ok) throw new Error("Network error");
+            
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `QuickAi-Image-${new Date().getTime()}.png`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            toast.success("Image downloaded!", { id: toastId });
+        } catch (error) {
+            console.error("Image Download Error:", error);
+            window.open(item.processedImageUrl, '_blank');
+            toast.dismiss(toastId);
         }
     };
 
-    // Determine what content to render based on the polymorphic data model
-    const renderContent = () => {
-        if (item.displayType === 'Image Tool') {
-            return (
-                <div className="flex justify-center bg-gray-50 rounded-lg p-2 border border-gray-100">
-                    <img
-                        src={item.resultUrl}
-                        alt={item.displayTitle}
-                        className="max-h-96 object-contain rounded shadow-sm"
-                        onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.parentElement.innerHTML = '<div class="text-red-500 p-4">Image no longer available or failed to load.</div>';
-                        }}
-                    />
-                </div>
-            );
-        }
+ const handleExportPDF = async () => {
+    if (isGeneratingPDF) return;
+    
+    // 1. Point DIRECTLY to the live DOM element. No manual cloneNode!
+    const originalElement = document.getElementById(`pdf-content-${item._id}`);
+    if (!originalElement) {
+        toast.error("Nothing to export");
+        return;
+    }
 
-        if (item.displayType === 'Document Tool') {
-            return (
-                <div className="text-sm text-slate-700 custom-scroll">
-                    <div className="mb-4">
-                        <a 
-                            href={item.pdfUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 text-teal-600 hover:text-teal-700 font-medium text-sm bg-teal-50 px-3 py-1.5 rounded-md transition-colors"
-                        >
-                            <ExternalLink className="w-4 h-4" /> View Original PDF
-                        </a>
-                    </div>
-                    <div className="prose prose-sm max-w-none prose-teal">
-                        <MarkDown>{item.feedback || "No feedback available."}</MarkDown>
-                    </div>
-                </div>
-            );
-        }
+    setIsGeneratingPDF(true);
+    const toastId = toast.loading("Preparing PDF...");
 
-        if (item.displayType === 'Study Session') {
-            return (
-                <div className="text-sm text-slate-700 custom-scroll">
-                    <div className="prose prose-sm max-w-none prose-red">
-                        <MarkDown>{item.summary || "No summary available."}</MarkDown>
-                    </div>
-                </div>
-            );
-        }
+    try {
+        const opt = {
+            margin:       [0.5, 0.5, 0.5, 0.5],
+            filename:     `QuickAi-Export-${Date.now()}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] },
+            html2canvas:  {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                scrollY: 0,
+                scrollX: 0,
+                windowWidth: 800,
+                // 2. Let html2canvas make the clone, then we sanitize it via CSS
+                onclone: (clonedDoc) => {
+                    const style = clonedDoc.createElement('style');
+                    style.innerHTML = `
+                        /* Kill ALL gradients and background patterns to prevent 'createPattern' crashes */
+                        * {
+                            background-image: none !important;
+                            box-shadow: none !important;
+                        }
+                        
+                        /* Force a minimum size so the canvas never evaluates to 0x0 */
+                        svg, canvas, hr {
+                            min-width: 1px !important;
+                            min-height: 1px !important;
+                        }
+                        
+                        /* Strip scrolling to prevent the engine from freezing */
+                        .overflow-x-auto, .overflow-y-auto, .custom-scroll {
+                            overflow: visible !important;
+                            max-width: 100% !important;
+                        }
+                    `;
+                    clonedDoc.head.appendChild(style);
+                }
+            },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
 
-        // Default for Articles and Blog Titles (TextContent)
-        return (
-            <div className="text-sm text-slate-700 custom-scroll">
-                <div className="prose prose-sm max-w-none prose-blue">
-                    <MarkDown>{item.content || "No content available."}</MarkDown>
-                </div>
-            </div>
-        );
-    };
+        // 3. Generate directly from the live element
+        await html2pdf().set(opt).from(originalElement).save();
+        toast.success("PDF Downloaded!", { id: toastId });
+
+    } catch (error) {
+        console.error("PDF Generation Error:", error);
+        toast.error("Failed to export PDF. Please try again.", { id: toastId });
+    } finally {
+        setIsGeneratingPDF(false);
+    }
+};
 
     return (
-        <div
-            className="w-full bg-white border border-gray-200 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-md hover:border-gray-300 overflow-hidden"
-            onClick={(e) => {
-                // Prevents toggling when a user is selecting text to copy or clicking a link
-                if (window.getSelection().toString() || e.target.tagName.toLowerCase() === 'a') return;
-                setExpanded(!expanded);
-            }}
-        >
-            {/* Header Area */}
-            <div className="p-4 flex justify-between items-center gap-4 bg-white">
-                <div className="flex items-center gap-4 flex-1 overflow-hidden">
-                    <div className="p-2 bg-gray-50 rounded-lg shrink-0">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden mb-4">
+            
+            {/* COLLAPSED VIEW (Header) - Safe to use Tailwind colors here as it is NOT exported */}
+            <div onClick={() => setIsExpanded(!isExpanded)} className="flex items-center justify-between p-5 cursor-pointer hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-100 shrink-0">
                         {getIcon()}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h2 className="font-semibold text-gray-800 truncate text-base">
-                            {item.displayTitle || "Untitled Creation"}
-                        </h2>
-                        <div className="flex items-center gap-2 mt-0.5">
-                            <p className="text-xs text-gray-500 font-medium">
-                                {new Date(item.createdAt).toLocaleDateString(undefined, {
-                                    year: 'numeric', month: 'short', day: 'numeric',
-                                    hour: '2-digit', minute: '2-digit'
-                                })}
-                            </p>
+                        <div className="flex items-center gap-3 mb-1">
+                            <span className="font-bold text-gray-800 text-sm tracking-wide">{item.displayType}</span>
+                            <span className="text-xs font-medium text-gray-400">{formatDate(item.createdAt)}</span>
                         </div>
+                        <p className="text-gray-600 text-sm truncate pr-4">"{getPromptPreview()}"</p>
                     </div>
                 </div>
-                
-                <button className={`flex-shrink-0 border px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${getBadgeStyle()}`}>
-                    {item.displayType}
-                </button>
-            </div>
-
-            {/* Expandable Body Area */}
-            <div className={`transition-all duration-300 ease-in-out ${expanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                <div className="p-4 border-t border-gray-100 bg-gray-50/30 max-h-[600px] overflow-y-auto custom-scroll">
-                    {/* Render specific prompt if applicable */}
-                    {item.prompt && item.displayType !== 'Document Tool' && item.displayType !== 'Study Session' && (
-                        <div className="mb-4 pb-3 border-b border-gray-100">
-                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Prompt Used:</span>
-                            <p className="text-sm text-gray-700 italic">"{item.prompt}"</p>
-                        </div>
-                    )}
-                    
-                    {renderContent()}
+                <div className="shrink-0 text-gray-400">
+                    {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </div>
             </div>
+
+            {/* EXPANDED VIEW */}
+            {isExpanded && (
+                <div className="border-t border-gray-100 bg-gray-50/50">
+                    
+                    {/* THE PDF TARGET CONTAINER - Strictly using pure HEX colors */}
+                    <div id={`pdf-content-${item._id}`} className="p-6 bg-[#ffffff]">
+                        
+                        <div className="mb-6 pb-6 border-b border-[#e5e7eb]">
+                            <h4 className="text-xs font-bold text-[#9ca3af] uppercase tracking-wider mb-2">
+                                {item.mappedType === 'document' ? 'Analyzed Document' : 'Original Prompt / Input'}
+                            </h4>
+                            <p className="font-medium leading-relaxed text-[#1f2937]">
+                                {item.mappedType === 'youtube' ? (
+                                    <a href={item.videoUrl} target="_blank" rel="noreferrer" className="text-[#2563eb] hover:underline">
+                                        {item.title} ({item.videoUrl})
+                                    </a>
+                                ) : (
+                                    getPromptPreview()
+                                )}
+                            </p>
+                        </div>
+
+                        <div className="text-[#1f2937]">
+                            {item.mappedType === 'image' ? (
+                                <div className="flex justify-center bg-[#f3f4f6] rounded-xl p-4">
+                                    {/* Removed 'shadow-sm' to prevent oklch box-shadow crashes */}
+                                    <img src={item.processedImageUrl} alt="Generated Content" className="max-h-96 rounded-lg" crossOrigin="anonymous" />
+                                </div>
+                            ) : item.mappedType === 'youtube' ? (
+                                <MarkdownViewer content={item.notes || item.summary} />
+                            ) : item.mappedType === 'document' ? (
+                                <MarkdownViewer content={item.aiFeedback} />
+                            ) : (
+                                <div>
+                                    <h3 className="text-xl font-bold text-[#111827] mb-4">{item.title}</h3>
+                                    <MarkdownViewer content={item.content} />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* ACTION BAR - Safe to use Tailwind colors here */}
+                    <div className="bg-white border-t border-gray-100 px-6 py-4 flex flex-wrap items-center justify-end gap-3 rounded-b-2xl">
+                        {item.mappedType !== 'image' && (
+                            <button onClick={handleCopy} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                                {isCopied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                                {isCopied ? 'Copied!' : 'Copy Text'}
+                            </button>
+                        )}
+
+                        {item.mappedType === 'image' && (
+                            <button onClick={handleDownloadImage} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg shadow-sm transition-colors">
+                                <Download className="w-4 h-4" />
+                                Download PNG
+                            </button>
+                        )}
+
+                        {['youtube', 'document', 'text'].includes(item.mappedType) && (
+                            <button onClick={handleExportPDF} disabled={isGeneratingPDF} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 rounded-lg shadow-sm transition-colors">
+                                {isGeneratingPDF ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
+                                ) : (
+                                    <><FileDown className="w-4 h-4" /> Export as PDF</>
+                                )}
+                            </button>
+                        )}
+                    </div>
+
+                </div>
+            )}
         </div>
     );
 };

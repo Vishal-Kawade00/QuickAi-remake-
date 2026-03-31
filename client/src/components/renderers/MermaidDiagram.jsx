@@ -52,8 +52,10 @@ const MermaidDiagram = ({ chart }) => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center my-6 p-8 bg-indigo-50 rounded-xl border border-indigo-100">
-                <div className="flex items-center gap-2 text-indigo-400">
+            // Replaced bg-indigo-50 and border-indigo-100
+            <div className="flex items-center justify-center my-6 p-8 bg-[#eef2ff] rounded-xl border border-[#e0e7ff]">
+                {/* Replaced text-indigo-400 */}
+                <div className="flex items-center gap-2 text-[#818cf8]">
                     <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
@@ -66,11 +68,14 @@ const MermaidDiagram = ({ chart }) => {
 
     if (error) {
         return (
-            <div className="my-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                <p className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-2">
+            // Replaced bg-amber-50 and border-amber-200
+            <div className="my-6 p-4 bg-[#fffbeb] border border-[#fde68a] rounded-xl">
+                {/* Replaced text-amber-600 */}
+                <p className="text-xs font-bold text-[#d97706] uppercase tracking-wide mb-2">
                     ⚠️ Could not render diagram — showing raw syntax
                 </p>
-                <pre className="text-sm text-amber-800 font-mono overflow-x-auto whitespace-pre-wrap">
+                {/* Replaced text-amber-800 */}
+                <pre className="text-sm text-[#92400e] font-mono overflow-x-auto whitespace-pre-wrap">
                     {chart}
                 </pre>
             </div>
@@ -78,7 +83,8 @@ const MermaidDiagram = ({ chart }) => {
     }
 
     return (
-        <div className="my-6 p-6 bg-white border border-indigo-100 rounded-xl shadow-sm overflow-x-auto">
+        // Replaced bg-white and border-indigo-100
+        <div className="my-6 p-6 bg-[#ffffff] border border-[#e0e7ff] rounded-xl shadow-sm overflow-x-auto">
             <div
                 className="flex justify-center"
                 dangerouslySetInnerHTML={{ __html: svg }}
