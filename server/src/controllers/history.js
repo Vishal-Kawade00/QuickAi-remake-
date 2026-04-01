@@ -1,5 +1,6 @@
 import { TextContent, ImageTask, ResumeFeedback } from '../models/Creation.js'; // Adjust paths
 import StudySession from '../models/StudySession.js';
+import ChatHistory from "../models/ChatHistory.js"
 
 export const getCategoryHistory = async (req, res) => {
     try {
@@ -8,11 +9,12 @@ export const getCategoryHistory = async (req, res) => {
 
         // 1. Handle the "All" category request
         if (type === 'all') {
-            const [text, image, document, youtube] = await Promise.all([
+            const [text, image, document, youtube, chat] = await Promise.all([
                 TextContent.find({ userId }).lean(),
                 ImageTask.find({ userId }).lean(),
                 ResumeFeedback.find({ userId }).lean(),
-                StudySession.find({ userId }).lean()
+                StudySession.find({ userId }).lean(),
+                ChatHistory.find({ userId }).lean()
             ]);
 
             // Combine arrays, tag them, and sort newest first
@@ -20,7 +22,8 @@ export const getCategoryHistory = async (req, res) => {
                 ...text.map(item => ({ ...item, modelType: 'text' })),
                 ...image.map(item => ({ ...item, modelType: 'image' })),
                 ...document.map(item => ({ ...item, modelType: 'document' })),
-                ...youtube.map(item => ({ ...item, modelType: 'youtube' }))
+                ...youtube.map(item => ({ ...item, modelType: 'youtube' })),
+                ...chat.map(item => ({ ...item, modelType: 'chat' }))
             ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
             return res.status(200).json({ success: true, data: combinedData });
@@ -41,6 +44,8 @@ export const getCategoryHistory = async (req, res) => {
             case 'youtube':
                 data = await StudySession.find({ userId }).sort({ createdAt: -1 }).lean();
                 break;
+            case 'chat': 
+                data = await ChatHistory.find({ userId }).sort({ createdAt: -1 }).lean(); break;
             default:
                 return res.status(400).json({ success: false, message: "Invalid category" });
         }

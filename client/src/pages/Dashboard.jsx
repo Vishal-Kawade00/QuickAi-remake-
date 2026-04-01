@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkle, Gem, FileText, Image as ImageIcon, Youtube, AlignLeft, Layers } from 'lucide-react';
+import { Sparkle, Gem, FileText, Image as ImageIcon, Youtube, AlignLeft, Layers, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 
 const Dashboard = () => {
-    const [counts, setCounts] = useState({ all: 0, text: 0, image: 0, document: 0, youtube: 0 });
+    const [counts, setCounts] = useState({ all: 0, text: 0, image: 0, document: 0, youtube: 0, chat: 0 });
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -22,7 +22,8 @@ const Dashboard = () => {
                         text: allData.filter(i => i.modelType === 'text').length,
                         image: allData.filter(i => i.modelType === 'image').length,
                         document: allData.filter(i => i.modelType === 'document').length,
-                        youtube: allData.filter(i => i.modelType === 'youtube').length
+                        youtube: allData.filter(i => i.modelType === 'youtube').length,
+                        chat: allData.filter(i => i.modelType === 'chat').length
                     });
                 }
             } catch (error) {
@@ -39,7 +40,8 @@ const Dashboard = () => {
         { id: 'text', title: 'Text & Blogs', count: counts.text, icon: AlignLeft, bg: 'from-blue-500 to-cyan-400', path: '/ai/history/text' },
         { id: 'image', title: 'Image Generation', count: counts.image, icon: ImageIcon, bg: 'from-green-500 to-emerald-400', path: '/ai/history/image' },
         { id: 'document', title: 'Resume Reviews', count: counts.document, icon: FileText, bg: 'from-teal-500 to-cyan-500', path: '/ai/history/document' },
-        { id: 'youtube', title: 'YouTube Study Notes', count: counts.youtube, icon: Youtube, bg: 'from-red-500 to-rose-400', path: '/ai/history/youtube' }
+        { id: 'youtube', title: 'YouTube Study Notes', count: counts.youtube, icon: Youtube, bg: 'from-red-500 to-rose-400', path: '/ai/history/youtube' },
+        { id: 'chat', title: 'AI Chat', count: counts.chat, icon: MessageSquare, bg: 'from-orange-500 to-amber-500', path: '/ai/history/chat' }
     ];
 
     return (

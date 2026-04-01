@@ -20,12 +20,12 @@ const FeatureHistory = () => {
         'text': { title: 'Text & Blog History' },
         'image': { title: 'Image Generation History' },
         'document': { title: 'Resume Review History' },
-        'youtube': { title: 'YouTube Study History' }
+        'youtube': { title: 'YouTube Study History' },
+        'chat': { title: 'AI Chat Conversations' }
     };
 
     const details = categoryDetails[category] || { title: 'History' };
-
-    useEffect(() => {
+useEffect(() => {
         const fetchCategoryHistory = async () => {
             try {
                 setLoading(true);
@@ -37,10 +37,13 @@ const FeatureHistory = () => {
                     if (category === 'all') {
                         formattedData = data.data.map(item => {
                             let displayType = 'Content';
+                            
                             if (item.modelType === 'text') displayType = item.type === 'article' ? 'Article' : 'Blog Title';
                             if (item.modelType === 'image') displayType = 'Image Tool';
                             if (item.modelType === 'document') displayType = 'Document Tool';
-                            if (item.modelType === 'youtube') displayType = 'Study Session';
+                            if (item.modelType === 'youtube') displayType = 'Study Session'; // <-- Removed the stray period here!
+                            if (item.modelType === 'chat') displayType = 'AI Chat';
+                            
                             return { ...item, displayType, mappedType: item.modelType }; 
                         });
                     } else {
@@ -48,14 +51,17 @@ const FeatureHistory = () => {
                             ...item, 
                             displayType: category === 'text' ? (item.type === 'article' ? 'Article' : 'Blog Title') : 
                                          category === 'image' ? 'Image Tool' : 
-                                         category === 'document' ? 'Document Tool' : 'Study Session',
+                                         category === 'document' ? 'Document Tool' : 
+                                         category === 'chat' ? 'AI Chat' : 'Study Session',
                             mappedType: category
                         }));
                     }
+                    
                     setCreations(formattedData);
                 }
             } catch (error) {
-                toast.error(`Failed to load history`);
+                console.error("History fetch error:", error);
+                toast.error("Failed to load history");
             } finally {
                 setLoading(false);
             }
