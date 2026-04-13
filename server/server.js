@@ -19,7 +19,17 @@ connectDB();
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    // Allow local frontend and ANY Chrome extension to connect
+    if (origin.startsWith('chrome-extension://') || origin.startsWith('http://localhost')) {
+        return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
