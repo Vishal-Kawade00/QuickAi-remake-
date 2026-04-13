@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QuickAI</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        width: 320px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #f9fafb;
+      }
+      
+      .container {
+        padding: 16px;
+      }
+      
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 20px;
+      }
+      
+      .logo {
+        width: 32px;
+        height: 32px;
+        background: #4f46e5;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 18px;
+      }
+      
+      .title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1f2937;
+      }
+      
+      .user-card {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+      
+      .user-name {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 4px;
+      }
+      
+      .user-email {
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 8px;
+      }
+      
+      .plan-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        background: #4f46e5;
+        color: white;
+        border-radius: 16px;
+        font-size: 11px;
+        font-weight: 500;
+      }
+      
+      .video-info {
+        background: white;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 16px;
+        font-size: 13px;
+        border: 1px solid #e5e7eb;
+      }
+      
+      .video-title {
+        font-weight: 500;
+        color: #1f2937;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      .video-url {
+        color: #6b7280;
+        font-size: 11px;
+      }
+      
+      .actions {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      
+      .btn {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+      }
+      
+      .btn-primary {
+        background: #4f46e5;
+        color: white;
+      }
+      
+      .btn-primary:hover {
+        background: #4338ca;
+      }
+      
+      .btn-success {
+        background: #10b981;
+        color: white;
+      }
+      
+      .btn-warning {
+        background: #f59e0b;
+        color: white;
+      }
+      
+      .sessions {
+        background: white;
+        border-radius: 12px;
+        padding: 12px;
+      }
+      
+      .sessions-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 12px;
+      }
+      
+      .session-item {
+        padding: 10px;
+        border-bottom: 1px solid #f3f4f6;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      
+      .session-item:last-child {
+        border-bottom: none;
+      }
+      
+      .session-item:hover {
+        background: #f9fafb;
+      }
+      
+      .session-title {
+        font-size: 13px;
+        font-weight: 500;
+        color: #1f2937;
+        margin-bottom: 4px;
+      }
+      
+      .session-date {
+        font-size: 11px;
+        color: #9ca3af;
+      }
+      
+      .empty-state {
+        text-align: center;
+        padding: 20px;
+        color: #9ca3af;
+        font-size: 13px;
+      }
+      
+      .loading {
+        text-align: center;
+        padding: 20px;
+        color: #6b7280;
+      }
+      
+      .login-btn {
+        width: 100%;
+        padding: 12px;
+        background: #4f46e5;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        margin-bottom: 12px;
+      }
+      
+      .login-btn:hover {
+        background: #4338ca;
+      }
+      
+      .logout-btn {
+        width: 100%;
+        padding: 8px;
+        background: #ef4444;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        margin-top: 12px;
+      }
+      
+      .logout-btn:hover {
+        background: #dc2626;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" class="container"></div>
+    <script src="popup.js"></script>
+  </body>
+</html>

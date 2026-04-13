@@ -1,13 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "QuickAi Study Assistant",
+  "name": "QuickAI - YouTube Learning Assistant",
   "version": "1.0.0",
-  "description": "AI-powered study notes, summaries, and conversation for YouTube videos.",
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  },
+  "description": "AI-powered YouTube learning assistant with summaries, chat, and detailed notes",
   "permissions": [
     "storage",
     "activeTab",
@@ -15,27 +10,37 @@
   ],
   "host_permissions": [
     "https://www.youtube.com/*",
-    "http://localhost:5000/*"
-  ],
-  "background": {
-    "service_worker": "background.js",
-    "type": "module"
-  },
-  "content_scripts": [
-    {
-      "matches": ["https://www.youtube.com/watch*"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
-    }
+    "http://localhost:5000/*",
+    "https://quickai-backend.onrender.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "QuickAi"
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["assets/content.css"],
+      "run_at": "document_end"
+    }
+  ],
   "web_accessible_resources": [
     {
-      "resources": ["*.js", "*.css", "*.html"],
+      "resources": ["assets/*"],
       "matches": ["https://www.youtube.com/*"]
     }
-  ]
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
 }
