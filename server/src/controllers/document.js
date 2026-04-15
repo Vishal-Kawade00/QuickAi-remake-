@@ -80,7 +80,6 @@ export const reviewResume = async (req, res) => {
         // ✅ Save to MongoDB
         await ResumeFeedback.create({
             userId,
-            fileName: req.file.originalname,
             resumeUrl: secure_url,
             aiFeedback: content
         });
