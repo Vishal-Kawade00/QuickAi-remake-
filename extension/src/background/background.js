@@ -1,105 +1,173 @@
-// background.js — Service Worker
-// Listens for JWT shared from the React web app and handles backend API calls
+// Background service worker for handling authentication and API calls
 
-const API_BASE = "http://localhost:5000/api";
+let authToken = null;
+let keepAliveInterval = null;
 
-// ─── Listen for messages from content scripts and popup ───────────────────────
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "SAVE_JWT") {
-    chrome.storage.local.set({ jwt: message.token }, () => {
-      console.log("[QuickAi] JWT saved to extension storage.");
+// Initialize
+initialize();
+
+function initialize() {
+  console.log('🔵 Background script initialized');
+  
+  // Load token from storage
+  chrome.storage.local.get(['authToken'], (result) => {
+    if (result.authToken) {
+      authToken = result.authToken;
+      console.log('Token loaded from storage');
+    }
+  });
+  
+  // Set up keep-alive to prevent service worker from sleeping
+  startKeepAlive();
+}
+
+function startKeepAlive() {
+  if (keepAliveInterval) {
+    clearInterval(keepAliveInterval);
+  }
+  
+  keepAliveInterval = setInterval(() => {
+    console.log('Keep-alive ping');
+    // Simple operation to keep service worker alive
+    chrome.storage.local.get(['authToken'], () => {});
+  }, 20000); // Ping every 20 seconds
+}
+
+// Listen for messages
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('Background received:', request.type);
+  
+  // Reset keep-alive on message
+  startKeepAlive();
+  
+  switch (request.type) {
+    case 'SET_TOKEN':
+      handleSetToken(request, sendResponse);
+      break;
+      
+    case 'GET_TOKEN':
+      handleGetToken(sendResponse);
+      break;
+      
+    case 'CLEAR_TOKEN':
+      handleClearToken(sendResponse);
+      break;
+      
+    case 'API_REQUEST':
+      handleAPIRequest(request)
+        .then(response => sendResponse(response))
+        .catch(error => sendResponse({ 
+          success: false, 
+          message: error.message || 'API request failed'
+        }));
+      return true; // Keep message channel open
+      
+    case 'OPEN_POPUP':
+      chrome.action.openPopup();
       sendResponse({ success: true });
+      break;
+      
+    case 'PING':
+      sendResponse({ success: true, timestamp: Date.now() });
+      break;
+      
+    default:
+      sendResponse({ error: 'Unknown request type' });
+  }
+  
+  return true;
+});
+
+function handleSetToken(request, sendResponse) {
+  authToken = request.token;
+  chrome.storage.local.set({ authToken: request.token }, () => {
+    console.log('Token saved to storage');
+    sendResponse({ success: true });
+  });
+}
+
+function handleGetToken(sendResponse) {
+  chrome.storage.local.get(['authToken'], (result) => {
+    authToken = result.authToken || null;
+    console.log('Token retrieved:', authToken ? 'Present' : 'Not found');
+    sendResponse({ token: authToken });
+  });
+}
+
+function handleClearToken(sendResponse) {
+  authToken = null;
+  chrome.storage.local.remove('authToken', () => {
+    console.log('Token cleared');
+    sendResponse({ success: true });
+  });
+}
+
+async function handleAPIRequest(request) {
+  const { endpoint, method = 'POST', data } = request;
+  
+  // Format endpoint
+  const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const baseURL = 'http://localhost:5000/api';
+  const url = `${baseURL}${formattedEndpoint}`;
+  
+  console.log('Making API request to:', url);
+  console.log('Method:', method);
+  console.log('Token present:', !!authToken);
+  
+  try {
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authToken ? `Bearer ${authToken}` : ''
+      },
+      body: data ? JSON.stringify(data) : undefined
     });
-    return true; // keep channel open for async response
+    
+    console.log('Response status:', response.status);
+    
+    let result;
+    try {
+      result = await response.json();
+    } catch (e) {
+      result = { message: 'Invalid JSON response' };
+    }
+    
+    console.log('Response data:', result);
+    
+    if (!response.ok) {
+      throw new Error(result.message || `HTTP error! status: ${response.status}`);
+    }
+    
+    return { success: true, ...result };
+  } catch (error) {
+    console.error('API request failed:', error);
+    throw error;
   }
+}
 
-  if (message.type === "GET_JWT") {
-    chrome.storage.local.get(["jwt"], (result) => {
-      sendResponse({ token: result.jwt || null });
+// Handle extension installation
+chrome.runtime.onInstalled.addListener((details) => {
+  console.log('Extension installed/updated:', details.reason);
+  
+  if (details.reason === 'install') {
+    // Show welcome page
+    chrome.tabs.create({ 
+      url: 'https://github.com/your-repo/quickai'
     });
-    return true;
-  }
-
-  if (message.type === "CLEAR_JWT") {
-    chrome.storage.local.remove("jwt", () => {
-      sendResponse({ success: true });
-    });
-    return true;
-  }
-
-  // ─── API Calls ───────────────────────────────────────────────────────────────
-  if (message.type === "API_SUMMARIZE") {
-    handleApiCall("/youtube/summarize", message.payload, sendResponse);
-    return true;
-  }
-
-  if (message.type === "API_DETAILED_NOTES") {
-    handleApiCall("/youtube/detailed-notes", message.payload, sendResponse);
-    return true;
-  }
-
-  if (message.type === "API_CHAT") {
-    handleApiCall("/youtube/chat", message.payload, sendResponse);
-    return true;
-  }
-
-  if (message.type === "API_GET_SESSION") {
-    handleGetCall(`/youtube/session/${message.videoId}`, sendResponse);
-    return true;
   }
 });
 
-// ─── Helper: POST request ─────────────────────────────────────────────────────
-async function handleApiCall(endpoint, payload, sendResponse) {
-  try {
-    const { jwt } = await chrome.storage.local.get(["jwt"]);
-    if (!jwt) {
-      sendResponse({ error: "Not authenticated. Please log in on QuickAi." });
-      return;
-    }
+// Handle extension startup
+chrome.runtime.onStartup.addListener(() => {
+  console.log('Extension starting up');
+  initialize();
+});
 
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${jwt}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      sendResponse({ error: data.message || "Server error" });
-    } else {
-      sendResponse({ data });
-    }
-  } catch (err) {
-    console.error("[QuickAi Background Error]", err);
-    sendResponse({ error: "Network error. Is the server running?" });
+// Clean up on unload
+chrome.runtime.onSuspend.addListener(() => {
+  console.log('Extension suspending');
+  if (keepAliveInterval) {
+    clearInterval(keepAliveInterval);
   }
-}
-
-// ─── Helper: GET request ──────────────────────────────────────────────────────
-async function handleGetCall(endpoint, sendResponse) {
-  try {
-    const { jwt } = await chrome.storage.local.get(["jwt"]);
-    if (!jwt) {
-      sendResponse({ error: "Not authenticated." });
-      return;
-    }
-
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${jwt}` },
-    });
-
-    const data = await res.json();
-    sendResponse({ data });
-  } catch (err) {
-    sendResponse({ error: "Network error." });
-  }
-}
-
-// ─── Cross-origin JWT sharing from React app ─────────────────────────────────
-// The React app posts a message to the window; the content script relays it here.
-// See: client/src/utils/shareJwt.js for the web app side.
+});
