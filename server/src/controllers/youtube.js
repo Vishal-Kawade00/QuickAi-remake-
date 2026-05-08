@@ -35,7 +35,7 @@ export const summarizeVideo = async (req, res) => {
 
         const prompt = `Provide a concise, highly structured summary of the following YouTube video transcript. Highlight the main ideas, key takeaways, and output in clean Markdown.\n\nTranscript:\n${transcript}`;
 
-        const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const result = await model.generateContent(prompt);
         const summary = result.response.text();
 
@@ -189,9 +189,14 @@ export const getRecentSessions = async (req, res) => {
 export const getTranscriptByVideoId = async (req, res) => {
   try {
     const { videoId } = req.params;
-    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    
+    // Use your existing fetchTranscript service which should 
+    // wrap a library like 'youtube-transcript'
+    const transcript = await fetchTranscript(`https://www.youtube.com/watch?v=${videoId}`);
 
-    const transcript = await fetchTranscript(videoUrl);
+    if (!transcript) {
+      return res.status(404).json({ success: false, message: "Transcript not found or disabled." });
+    }
 
     res.status(200).json({ success: true, transcript });
   } catch (error) {

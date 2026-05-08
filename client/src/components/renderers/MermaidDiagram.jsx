@@ -1,14 +1,13 @@
 import React, { useEffect, useRef, useState, memo } from "react";
 import mermaid from "mermaid";
 
-// ✅ 1. GLOBAL INITIALIZATION: Run once at the module level.
-// No need for a custom flag function; this executes immediately when the file is imported.
 mermaid.initialize({
     startOnLoad: false,
     theme: "base",
     securityLevel: "loose",
     htmlLabels: false,
     fontFamily: "ui-sans-serif, system-ui, sans-serif",
+    errorRenderer: () => '',   // ✅ kills "Syntax error in text" DOM injection
     themeVariables: {
         primaryColor: "#6366f1",
         primaryTextColor: "#1e1b4b",
@@ -25,9 +24,16 @@ mermaid.initialize({
     },
 });
 
-// ✅ 2. ENHANCED SANITIZER: Handles non-string edge cases
+// ✅ Silence Mermaid's console noise globally — runs once at module level
+const originalConsoleError = console.error;
+console.error = (...args) => {
+    if (typeof args[0] === 'string' && 
+        (args[0].includes('mermaid') || args[0].includes('Syntax error'))) return;
+    originalConsoleError(...args);
+};
+
 const sanitizeChart = (chart) => {
-    if (typeof chart !== 'string') return ''; // Edge case: chart is undefined/null/object
+    if (typeof chart !== 'string') return '';
     return chart
         .replace(/^```mermaid\s*/i, "")
         .replace(/^```\s*/, "")
@@ -38,7 +44,6 @@ const sanitizeChart = (chart) => {
         .trim();
 };
 
-// Stable ID counter
 let idCounter = 0;
 
 const MermaidDiagram = memo(({ chart }) => {
@@ -46,35 +51,25 @@ const MermaidDiagram = memo(({ chart }) => {
     const [error, setError] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    // ✅ 3. LAZY REF INITIALIZATION: Prevents ID counter from incrementing on every re-render
     const idRef = useRef(null);
     if (!idRef.current) {
         idRef.current = `mermaid-diagram-${++idCounter}`;
     }
 
-    // ✅ 4. HOOKS ALWAYS RUN: useEffect must come BEFORE any early returns
     useEffect(() => {
         const cleanChart = sanitizeChart(chart);
+        if (!cleanChart) { setLoading(false); return; }
 
-        // If nothing to render after cleaning, stop loading and abort
-        if (!cleanChart) {
-            setLoading(false);
-            return;
-        }
-
-        let cancelled = false; 
+        let cancelled = false;
 
         const renderDiagram = async () => {
             try {
                 setLoading(true);
                 setError(false);
-
-                // Mermaid render
                 const { svg: rendered } = await mermaid.render(idRef.current, cleanChart);
-                
                 if (!cancelled) setSvg(rendered);
             } catch (err) {
-                console.error("Mermaid render error:", err);
+                // ✅ No console.error here — already silenced above, and error state handles UI
                 if (!cancelled) setError(true);
             } finally {
                 if (!cancelled) setLoading(false);
@@ -82,12 +77,9 @@ const MermaidDiagram = memo(({ chart }) => {
         };
 
         renderDiagram();
-
-        // Cleanup stale renders
         return () => { cancelled = true; };
     }, [chart]);
 
-    // ✅ 5. KILL SWITCH: Must be placed AFTER hooks to satisfy React Rules
     if (!chart || chart.trim() === "") return null;
 
     if (loading) {
